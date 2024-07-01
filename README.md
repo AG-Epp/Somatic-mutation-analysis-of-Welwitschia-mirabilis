@@ -2,9 +2,13 @@
 This repository contains digital supplements for the master thesis of Clara T., "Somatic mutation analysis for age estimation of Welwitschia mirabilis".
 
 The data processing for this project includes
+
 	- mapping of Illumina sequencing data from three Welwitschia individuals using paleomix (2 samples per individual)
+ 
  	- variant calling using GATK HaplotypeCaller
+  
   	- counting intra-individual somatic variants using a custom awk script
+   
    	- analysis of count and variant positin ata using R
     
 It is currently not possible to include the entirety of the files and data to run this analysis in full, however intermediate files are given for R processing, and the main data processing and file usage is detailed below.
