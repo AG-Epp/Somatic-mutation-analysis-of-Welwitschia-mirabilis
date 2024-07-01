@@ -1,5 +1,5 @@
 # Somatic mutation analysis of Welwitschia mirabilis
-This repository contains digital supplements for the master thesis of Clara Tatalidis, "Somatic mutation analysis for age estimation of Welwitschia mirabilis".
+This repository contains digital supplements for the master thesis of Clara T., "Somatic mutation analysis for age estimation of Welwitschia mirabilis".
 
 The data processing for this project includes
 	- mapping of Illumina sequencing data from three Welwitschia individuals using paleomix (2 samples per individual)
