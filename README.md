@@ -120,20 +120,20 @@ In addition, the script writes bedfiles containing the position of every called 
 
 # Exploratory data analysis: extracting VCF annotation data using VariantsToTable
 
-java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
-	-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
-	-GF GQ 
-	-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_GQ.table 
-
-java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
-	-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
-	-GF RGQ 
-	-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_RGQ.table 
-
-java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
-	-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
-	-GF DP 
-	-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_DP.table 
+	java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
+		-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
+		-GF GQ 
+		-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_GQ.table 
+	
+	java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
+		-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
+		-GF RGQ 
+		-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_RGQ.table 
+	
+	java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable 
+		-V /.../240415.GATK.all_samples.welwitschia.Chr21.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
+		-GF DP 
+		-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_DP.table 
 	
 # final notes
 Calculation of SMR, calculation of between-variant distance bins and data visualisation 
