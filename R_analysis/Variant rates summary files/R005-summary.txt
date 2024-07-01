@@ -1,0 +1,4 @@
+CHR	INDIV	callable_sites	var_sites	var_sites/callable_sites
+all_Chr	WW01	29075186	1369	4,70848E-05
+all_Chr	WW04	29095800	1562	5,36847E-05
+all_Chr	ME01	76860845	1480	1,92556E-05
