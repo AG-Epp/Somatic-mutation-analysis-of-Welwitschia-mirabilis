@@ -9,7 +9,7 @@ The data processing for this project includes
   
   	- counting intra-individual somatic variants using a custom awk script
    
-   	- analysis of count and variant positin ata using R
+   	- analysis of variant counts and inter-variant distances using R
     
 It is currently not possible to include the entirety of the files and data to run this analysis in full, however intermediate files are given for R processing, and the main data processing and file usage is detailed below.
 
