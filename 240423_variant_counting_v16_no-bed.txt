@@ -1,0 +1,388 @@
+BEGIN{ 
+            #file separator
+            FS = "\t";
+            #initialise output file name variable
+            output_prefix = output_file;
+            #SNP mode
+            only_SNPs = 1;
+            #filters
+            min_DP = 15;
+            max_DP = 40;
+            min_GQ = 90;
+            min_RGQ = 90;
+            min_AD_ratio = 0.4;
+            max_ExcessHet = 40;
+            max_FiS = 1;
+            min_QD = 2;
+            #counters
+            WW01_sites_passed_filters = 0;
+            WW01_variant_sites_passed_filters = 0;
+            WW01_homozygous_variant_sites_passed_filters = 0;
+            WW04_sites_passed_filters = 0;
+            WW04_variant_sites_passed_filters = 0;
+            WW04_homozygous_variant_sites_passed_filters = 0;
+            ME01_sites_passed_filters = 0;
+            ME01_variant_sites_passed_filters = 0;
+            ME01_homozygous_variant_sites_passed_filters = 0;
+            
+        } 
+
+        { 
+        	# Split the FORMAT field, save in array "FORMAT_fields", save number of elements in num_FORMAT_fields
+            num_FORMAT_fields=split($9, FORMAT_fields, ":"); 
+            # create flag for identifying lines in the vcf file that carry variants
+            is_var = 0; 
+            # assign position numbers to the elements of FORMAT_fields, save them as variables
+            # will be used later to reference the correct element in the Genotype columns of each sample
+            for (x=1; x<=num_FORMAT_fields; x++){ 
+                switch (FORMAT_fields[x]){ 
+                    case "GT": 
+                        GT_field = x;
+                        break;
+                    case "AD": 
+                        AD_field = x; 
+                        break;
+                    case "DP": 
+                        DP_field = x; 
+                        #print "DP_field=" DP_field;
+                        break;
+                    case "RGQ": 
+                        RGQ_field = x; 
+                        # assign no-variant flag (RGQ inly in reference genotype, i.e. no variant)
+                        is_var = 0; 
+                        #print "RGQ_field=" RGQ_field;
+                        break;
+                    case "GQ": 
+                        GQ_field = x; 
+                        # assign variant flag
+                        is_var = 1; 
+                        break;   
+                } 
+			} 
+		
+			            
+			# Clear variables before processing each line 
+			Total_DP = ExcessHet = FiS = "";
+			# Split INFO fields by ";", save number if elements as variable
+			num_INFO_fields=split($8, INFO_fields, ";");
+			
+			for (i = 1; i <= num_INFO_fields; i++) {
+				# split every element inside INFO_fields based on "=" into an array called key_value, which contains the key and value pairs
+				split(INFO_fields[i], key_value, "=");
+				# added for robustness, in case for some reason the data does not follow the format.
+				if (length(key_value) == 2) {
+					key = key_value[1];
+					value = key_value[2];
+					# Now you can do whatever you want with the key and value
+					# For example, print them:
+					#print "Key: " key ", Value: " value
+					# Saves the keys and their corresponding values in an array called INFO_value
+					INFO_value[key] = value;
+				}
+			}
+			
+			
+			##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+			##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+			##INFO=<ID=FiS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">  					
+			##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+			
+			# for every element in INFO_value	
+			for (i in INFO_value){
+			# assign the value found for an element in the array to a variable
+				switch (i){
+					case "DP":
+						Total_DP = INFO_value[i];
+						#print "Total_DP = " Total_DP;
+						break;			
+					case "ExcessHet":
+						ExcessHet = INFO_value[i];
+						#print "var in line " $2;
+						#print "ExcessHet = " ExcessHet;
+						break;
+					#Here, we have to use FS as it is the string contained in the split; THIS IS NOT THE AWK_INTERNAL VARIABLE FS!
+					case "FS":	
+						FiS = INFO_value[i];
+						#print "FS = " FiS;				
+						break;
+					case "QD":
+						QD = INFO_value[i];
+						break;
+				}
+			}
+            # make an array of "filter-passing" flags for every sample 
+            # ind_site means individual site
+            for (x = 10; x<=NF; x++){
+            	ind_site_passed_filters[x] = 0;
+            }
+
+            # FILTERING FLAG ASSIGNMENT FOR EVERY SITE (VARIANT OR NOT)
+            
+            # if line is not a variable, check if it passes the filters anyway 
+            if (is_var == 0){
+            	# for every sample
+            	for (x=10; x<=NF; x++){ 
+            		# split the Genotype fields
+                    num_GT_fields = split($x, GT_fields, ":"); 
+                    # compare the values inside the Genotype fields (and Total DP) to the filtering parameters
+                    # FILTER FLAG ASSIGNMENT for invariant sites
+                    if (GT_fields[DP_field] >= min_DP && GT_fields[DP_field] <= max_DP && GT_fields[RGQ_field] >= min_RGQ){ 
+                        # flag for filters passed
+                        ind_site_passed_filters[x] = 1;
+                	} 
+            	} 
+            } else {
+            	# if we have a variant
+            	 
+            	# clear arrays
+            	delete alleles;
+                                
+            	# make an array out of the reference and variant alleles; we use this to check for SNPs later
+                num_allele_fields=split($5, allele_fields, ","); 
+                
+                # get the reference allele
+                alleles[0] = $4;
+                # add the variant alleles to the array
+                for (x=1; x<=num_allele_fields; x++){ 
+                    alleles[x] = allele_fields[x];
+                } 
+                
+
+                # check if line passes the filters
+                for (x=10; x<=NF; x++){ 
+                	
+                	# split the Genotype fields
+                    num_GT_fields = split($x, GT_fields, ":");
+                    
+                    #individual site genotype for every sample
+                    ind_site_GT[x] = GT_fields[GT_field];
+                    
+                    # get substring to get allele -> indexes if it is ref allele (0), allele ALT1, 2 etc! (and check if site is  SNP or an Indel later)
+                    GT_a1[x] = substr(ind_site_GT[x], 1, 1);
+    				GT_a2[x] = substr(ind_site_GT[x], 3, 1);
+                    
+                    # split the Allelic Depths field
+                    num_AD_fields = split(GT_fields[AD_field], all_dpts, ",");
+                    # adjust array indexes to start from 0
+    				for (i = 1; i <= num_AD_fields; i++) {
+      					allelic_depths[i - 1] = all_dpts[i];
+    				}
+    				      
+                    
+                    # FILTERING FLAG ASSIGNMENT for variant sites
+					if (GT_fields[DP_field] >= min_DP && GT_fields[DP_field] <= max_DP && GT_fields[GQ_field] >= min_GQ \
+					&& ExcessHet <= max_ExcessHet && FiS <= max_FiS && QD >= min_QD ){
+					# Nested filtering for Allelic Depth ratio
+						if (GT_fields[DP_field] != 0) { 
+
+    						# calculate the allelic frequency
+    						AD_ratio_a1 = allelic_depths[GT_a1[x]]/GT_fields[DP_field];
+    						AD_ratio_a2 = allelic_depths[GT_a2[x]]/GT_fields[DP_field]; 
+    						
+    						#print "$x =" x;
+    						#print "AD_ratio_a1 = " AD_ratio_a1 " allelic_depths[GT_a1[x]] = "  allelic_depths[GT_a1[x]] "GT_fields[DP_field] = " GT_fields[DP_field];
+    						#print "AD_ratio_a2 = " AD_ratio_a2 " allelic_depths[GT_a2[x]] = "  allelic_depths[GT_a2[x]] "GT_fields[DP_field] = " GT_fields[DP_field];
+    					
+    						if (AD_ratio_a1 >= min_AD_ratio && AD_ratio_a2 >= min_AD_ratio){ 
+								# count individual variant sites that passed filters for every sample					
+								ind_site_passed_filters[x] = 1;
+
+    					       
+							} else {
+								#print "Warning: Division by zero. Setting AD_ratio to a default value.";
+								#print "Line:", NR, "GT_fields[DP_field]:", GT_fields[DP_field];
+								AD_ratio_a1 = 0;  # You can choose an appropriate default value
+								AD_ratio_a2 = 0;  # You can choose an appropriate default value
+								ind_site_passed_filters[x] = 0;
+							}
+						}
+                	}
+                }
+            }
+            
+            # PAIRWISE VARIANT COUNTING
+    	 
+			# Pairwise comparison of variants within individual ME01
+			if (ind_site_passed_filters[10] == 1 && ind_site_passed_filters[11] == 1){
+				# count how many sites passed filters in WW01	
+                ME01_sites_passed_filters++;
+                
+                if (is_var == 1){ 
+                	if (only_SNPs == 0){ 
+                		# compares the variants between samples of the same individual to see if they are different
+                		if  (((GT_a1[10] != GT_a1[11]) || (GT_a2[10] != GT_a2[11])) && ((GT_a1[10] != GT_a2[11]) || (GT_a2[10] != GT_a1[11]))) {
+			  	   		  	# additional filtering for ExcessHet and FS
+							ME01_variant_sites_passed_filters++;
+
+							# checks if site is homozygous
+							if (GT_a1[10] == GT_a2[10] && GT_a1[11] == GT_a2[11] && GT_a1[10] != GT_a1[11]) { 
+								ME01_homozygous_variant_sites_passed_filters++;
+							} 
+			  	  		} 
+			  	  	} else {
+			  	  		# checks if site is a SNP by looking at the length of the allele field
+						if (only_SNPs == 1 && length(alleles[0]) == 1 && length(alleles[GT_a1[10]]) == 1 && length(alleles[GT_a2[10]]) == 1 && length(alleles[GT_a1[11]]) == 1 && length(alleles[GT_a2[11]]) == 1){ 
+							if (((GT_a1[10] != GT_a1[11]) || (GT_a2[10] != GT_a2[11])) && ((GT_a1[10] != GT_a2[11]) || (GT_a2[10] != GT_a1[11]))){ 
+								ME01_variant_sites_passed_filters++;
+								
+								# Construct output file name based on sample name
+        						#output_file_name = output_prefix ".ME01_variant_sites_passed_filters.bed" ;
+        					
+        						# Append chromosome and position to the output file
+        						#printf "%s\t%s\t%s\n", $1, $2, $2+1 >> output_file_name ;
+								
+								if (GT_a1[10] == GT_a2[10] && GT_a1[11] == GT_a2[11] && GT_a1[10] != GT_a1[11]) { 
+									ME01_homozygous_variant_sites_passed_filters++;
+									
+									# Construct output file name based on sample name
+        							#output_file_name = output_prefix ".ME01_homozygous_variant_sites_passed_filters.bed" ;
+        						
+        							# Append chromosome and position to the output file
+        							#printf "%s\t%s\t%s\n", $1, $2, $2+1 >> output_file_name ;
+			  	  					
+			  	  				} 
+			  	  			} 
+			  	  		} 
+			  		} 
+				} 
+			} 
+			
+			# filter for filtering criteria	WW01		 
+			if (ind_site_passed_filters[12] == 1 && ind_site_passed_filters[13] == 1){ 
+                WW01_sites_passed_filters++;
+                if (is_var == 1){ 
+                	if (only_SNPs == 0){ 
+                		if (((GT_a1[12] != GT_a1[13]) || (GT_a2[12] != GT_a2[13])) && ((GT_a1[12] != GT_a2[13]) || (GT_a2[12] != GT_a1[13]))) { 
+							WW01_variant_sites_passed_filters++;
+							
+							if (GT_a1[12] == GT_a2[12] && GT_a1[13] == GT_a2[13] && GT_a1[12] != GT_a1[13]){ 
+								WW01_homozygous_variant_sites_passed_filters++;
+			  	  				
+			  	  			} 
+			  	  		} 
+			  	  	} else {
+			  	  		if (only_SNPs == 1 && length(alleles[0]) == 1 && length(alleles[GT_a1[12]]) == 1 && length(alleles[GT_a2[12]]) == 1 && length(alleles[GT_a1[13]]) == 1 && length(alleles[GT_a2[13]]) == 1){ 
+			  	  			if (((GT_a1[12] != GT_a1[13]) || (GT_a2[12] != GT_a2[13])) && ((GT_a1[12] != GT_a2[13]) || (GT_a2[12] != GT_a1[13]))) { 
+								WW01_variant_sites_passed_filters++;
+								
+								# Construct output file name based on sample name
+        						#output_file_name = output_prefix ".WW01_variant_sites_passed_filters.bed" ;
+        					
+        						# Append chromosome and position to the output file
+        						#printf "%s\t%s\t%s\n", $1, $2, $2+1 >> output_file_name ;
+        						
+								if (GT_a1[12] == GT_a2[12] && GT_a1[13] == GT_a2[13] && GT_a1[12] != GT_a1[13]) { 
+									WW01_homozygous_variant_sites_passed_filters++;
+									
+									# Construct output file name based on sample name
+        						#	output_file_name = output_prefix ".WW01_homozygous_variant_sites_passed_filters.bed" ;
+        					
+        							# Append chromosome and position to the output file
+        						#	printf "%s\t%s\t&s\n", $1, $2, $2+1 >> output_file_name ;
+									
+								} 
+		    				} 
+		  	  			} 
+					} 
+				} 
+			} 
+
+			# filter for filtering criteria	ME01		 
+			if (ind_site_passed_filters[14] == 1 && ind_site_passed_filters[15] == 1){ 
+                WW04_sites_passed_filters++;
+                if (is_var == 1) { 
+                	if (only_SNPs == 0){ 
+                		if (((GT_a1[14] != GT_a1[15]) || (GT_a2[14] != GT_a2[15])) && ((GT_a1[14] != GT_a2[15]) || (GT_a2[14] != GT_a1[15]))) { 
+							WW04_variant_sites_passed_filters++;
+							if (GT_a1[14] == GT_a2[14] && GT_a1[15] == GT_a2[15] && GT_a1[14] != GT_a1[15]){ 
+								WW04_homozygous_variant_sites_passed_filters++;
+			  	  				
+			  	  			} 
+			  	  		} 
+			  	  	} else {
+			  	  		if (only_SNPs == 1 && length(alleles[0]) == 1 && length(alleles[GT_a1[14]]) == 1 && length(alleles[GT_a2[14]]) == 1 && length(alleles[GT_a1[15]]) == 1 && length(alleles[GT_a2[15]]) == 1){ 
+			  	  			if (((GT_a1[14] != GT_a1[15]) || (GT_a2[14] != GT_a2[15])) && ((GT_a1[14] != GT_a2[15]) || (GT_a2[14] != GT_a1[15]))) { 
+								WW04_variant_sites_passed_filters++;
+								
+								# Construct output file name based on sample name
+        						#output_file_name = output_prefix ".WW04_variant_sites_passed_filters.bed" ;
+        					
+        						# Append chromosome and position to the output file
+        						#printf "%s\t%s\t%s\n", $1, $2, $2+1 >> output_file_name ;
+
+
+								if (GT_a1[14] == GT_a2[14] && GT_a1[15] == GT_a2[15] && GT_a1[14] != GT_a1[15]) { 
+									WW04_homozygous_variant_sites_passed_filters++;
+									# Construct output file name based on sample name
+        						#	output_file_name = output_prefix ".WW04_homozygous_variant_sites_passed_filters.bed" ;
+        					
+        							# Append chromosome and position to the output file
+        						#	printf "%s\t%s\t%s\n", $1, $2, $2+1 >> output_file_name ;
+								} 
+		    				} 
+		  	  			} 
+					} 
+				} 
+			} 
+			
+			# block of print statements to check on status of file processing
+			# if ($2 % 1000000 == 0) {
+#                 print " ";
+#                 print "STATUS UPADATE";
+#                 print $1;
+#                 print "reading line " $2 "...";
+#                 print "only_SNPs = " only_SNPs ;
+#                 print "min_DP = " min_DP "; max_DP = " max_DP ;
+#                 print "min_GQ = " min_GQ "; min_RGQ = " min_RGQ ;
+#                 print "max_ExcessHet = " max_ExcessHet "; max_FS =" max_FiS ;
+#                 print " ";
+#                 print "WW01_homozygous_variant_sites_passed_filters = " WW01_homozygous_variant_sites_passed_filters;
+#                 print "WW01_variant_sites_passed_filters = " WW01_variant_sites_passed_filters;
+#                 print "WW01_sites_passed_filters = " WW01_sites_passed_filters;
+#                 print " ";
+#                 print "WW04_homozygous_variant_sites_passed_filters = " WW04_homozygous_variant_sites_passed_filters;
+#                 print "WW04_variant_sites_passed_filters = " WW04_variant_sites_passed_filters;
+#                 print "WW04_sites_passed_filters = " WW04_sites_passed_filters;
+#                 print " ";
+#                 print "ME01_homozygous_variant_sites_passed_filters = " ME01_homozygous_variant_sites_passed_filters;
+#                 print "ME01_variant_sites_passed_filters = " ME01_variant_sites_passed_filters;
+#                 print "ME01_sites_passed_filters = " ME01_sites_passed_filters;
+#                 
+#            } 
+
+		} 
+		
+END{
+    print "DONE";
+    print $1;
+    print "only_SNPs = " only_SNPs ;
+    print "min_DP = " min_DP "; max_DP = " max_DP ;
+    print "min_GQ = " min_GQ "; min_RGQ = " min_RGQ ;
+    print "max_ExcessHet = " max_ExcessHet "; max_FS = " max_FiS "; min_QD = " min_QD ;
+    print " ";
+    print "WW01_homozygous_variant_sites_passed_filters = " WW01_homozygous_variant_sites_passed_filters;
+    print "WW01_variant_sites_passed_filters = " WW01_variant_sites_passed_filters;
+    print "WW01_sites_passed_filters = " WW01_sites_passed_filters;
+    print " ";
+    print "WW04_homozygous_variant_sites_passed_filters = " WW04_homozygous_variant_sites_passed_filters;
+    print "WW04_variant_sites_passed_filters = " WW04_variant_sites_passed_filters;
+	print "WW04_sites_passed_filters = " WW04_sites_passed_filters;
+	print " ";
+    print "ME01_homozygous_variant_sites_passed_filters = " ME01_homozygous_variant_sites_passed_filters;
+    print "ME01_variant_sites_passed_filters = " ME01_variant_sites_passed_filters;
+	print "ME01_sites_passed_filters = " ME01_sites_passed_filters;
+	
+	summary_file = output_prefix ".summary.txt" ;
+	print $1 >> summary_file ;
+	print "only_SNPs = " only_SNPs >> summary_file ;
+    print "min_DP = " min_DP "; max_DP = " max_DP >> summary_file ;
+    print "min_GQ = " min_GQ "; min_RGQ = " min_RGQ >> summary_file ;
+    print "max_ExcessHet = " max_ExcessHet "; max_FS =" max_FiS "; min_QD = " min_QD >> summary_file ;
+    
+    variant_count_file = output_prefix ".variant_counts.tab" ;
+    printf "#CHROM\tINDIV\tsites_passed_filters\tvar_sites_passed_filters\thomoz_var_sites_passed_filters\n" >> variant_count_file ;
+    printf "%s\tWW01\t%s\t%s\t%s\n", $1, WW01_sites_passed_filters, WW01_variant_sites_passed_filters, WW01_homozygous_variant_sites_passed_filters >> variant_count_file ;
+    printf "%s\tWW04\t%s\t%s\t%s\n", $1, WW04_sites_passed_filters, WW04_variant_sites_passed_filters, WW04_homozygous_variant_sites_passed_filters >> variant_count_file ; 
+    printf "%s\tME01\t%s\t%s\t%s\n", $1, ME01_sites_passed_filters, ME01_variant_sites_passed_filters, ME01_homozygous_variant_sites_passed_filters >> variant_count_file ;
+                  
+    }
