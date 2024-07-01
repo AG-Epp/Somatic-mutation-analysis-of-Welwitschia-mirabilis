@@ -4,7 +4,7 @@ It is currently not possible to include the entirety of the files and data to ru
 
 # Bioinformatic processing for joint variant calling using GATK
 
-# Paleomix mapping
+	# Paleomix mapping
 
 	# yaml file (include file)
 	
@@ -19,14 +19,14 @@ It is currently not possible to include the entirety of the files and data to ru
 		--adapterremoval-max-threads 24
 		--temp-root /data/lastexpansion/clarata/temp/
 
-# In the following, the workflow from BAM file to joint-call VCF files is illustrated.
-# Command lines are exemplary.
-# SAMPLE is placeholder for samples, i.e. WW01_1, WW01_2, WW04_1, WW04_5, ME01_1 or ME01_3
-# CHR is placeholder for chromosome, i.e. Chr01, Chr02, ..., Chr21
-# commands were executed for every chromosome of every sample.
+# BAM to VCF file workflow
+Command lines are exemplary.
+SAMPLE is placeholder for samples, i.e. WW01_1, WW01_2, WW04_1, WW04_5, ME01_1 or ME01_3
+CHR is placeholder for chromosome, i.e. Chr01, Chr02, ..., Chr21
+commands were executed for every chromosome of every sample.
 
 
-# BAM file sorting 
+# 	BAM file sorting 
 
 	# 1. Create single chromosome BAM files for every sample
 	
@@ -43,7 +43,7 @@ It is currently not possible to include the entirety of the files and data to ru
 		samtools index -@ 4 -c SAMPLE.welwitschia_mirabilis_nuclear.CHR.sort.bam 
 	
 	
-# Variant calling with GATK HaplotypeCaller, creating genomic VCF files
+# 	Variant calling with GATK HaplotypeCaller, creating genomic VCF files
 	
 	java -jar /.../gatk-package-4.3.0.0-local.jar HaplotypeCaller 
 		-R /.../Welwitschia_genome.fasta 
@@ -56,7 +56,7 @@ It is currently not possible to include the entirety of the files and data to ru
 		-O SAMPLE.welwitschia_mirabilis_nuclear.CHR.sort.bam.gatk4300.minQ20.minMAPQ30.ERC-BP_RESOLUTION.CHR.gvcf 
 		--intervals CHR &
 		
-# Data processing for joint variant calling
+# 	Data processing for joint variant calling
 
 	# 1. Get list of gvcf files for every chromosome
 	
@@ -89,7 +89,7 @@ It is currently not possible to include the entirety of the files and data to ru
 			I=CHR_GenotypeGVCFs.list 
 			O=240415.GATK.all_samples.welwitschia.CHR.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
 			
-# Bedtools intersect was used to create the no_repeats dataset
+# 	Bedtools intersect was used to create the no_repeats dataset
 	
 	bedtools intersect 
 		-header 
@@ -99,15 +99,13 @@ It is currently not possible to include the entirety of the files and data to ru
 		> 240415.GATK.all_samples.welwitschia.CHR.genotypeGVCFs.conf_0_allsites.MergeVcfs.no_repeats.vcf 
 		
 # Using the custom AWK pairwise variant counting script
-	# The script is specific to the samples used in the present study.
-	# Filtering parameters are set from inside the awk script, 
-	# meaning that multiple versions of the script were used for the different thresholds of filters.
-	# The attached script includes the filter settings for the low-high filter thresholds.
-  # 
-	# Output file name prefixes are specified via a variable from the command line.
+	The script is specific to the samples used in the present study.
+	Filtering parameters are set from inside the awk script, meaning that multiple versions of the script were used for the different thresholds of filters.
+	The attached script includes the filter settings for the low-high filter thresholds.
+	Output file name prefixes are specified via a variable from the command line.
 	
 	
-# Command line for script initiation
+Command line for script initiation:
 
 cat 240415.GATK.all_samples.welwitschia.CHR.genotypeGVCFs.conf_0_allsites.MergeVcfs.vcf 
 	# concatenates the VCF file to pipe into AWK
@@ -118,10 +116,10 @@ cat 240415.GATK.all_samples.welwitschia.CHR.genotypeGVCFs.conf_0_allsites.MergeV
 -f variant_counting_v18_yes_bed_minRGQ40_minGQ90.txt 
 	# provides AWK script file
 	
-# The awk script produces separate variant count files for each chromosome, which are concatenated 
-# using standard unix commands before being imported into R for SMR calculation and data visualization.
 
-# In addition, the script writes bedfiles containing the position of every called intraindividual variant.
+The awk script produces separate variant count files for each chromosome, which are concatenated using standard unix commands before being imported into R for SMR calculation and data visualization.
+
+In addition, the script writes bedfiles containing the position of every called intraindividual variant.
 
 
 
@@ -142,5 +140,6 @@ java -jar /.../gatk-package-4.3.0.0-local.jar VariantsToTable
 	-GF DP 
 	-O 240428.GATK.VarToTab.all_samples.welwitschia.Chr21.genotypeGVCFs.allsites.GF_DP.table 
 	
-# Calculation of SMR, calculation of between-variant distance bins and data visualisation 
-# was performed in R version 4.2.2. Relevant code and files can be found in the R_scripts folder.
+# final notes
+Calculation of SMR, calculation of between-variant distance bins and data visualisation 
+was performed in R version 4.2.2. Relevant code and files can be found in the R_scripts folder.
