@@ -27,18 +27,15 @@ commands were executed for every chromosome of every sample.
 
 
 # BAM file sorting 
-
-1. Create single chromosome BAM files for every sample
+	# Create single chromosome BAM files for every sample
 	
 	samtools view -b SAMPLE.welwitschia_mirabilis_nuclear.bam CHR > SAMPLE.welwitschia_mirabilis_nuclear.CHR.bam
 		
-	
-2. Sort BAM files
+	# Sort BAM files
 	
 	samtools sort SAMPLE.welwitschia_mirabilis_nuclear.CHR.bam > SAMPLE.welwitschia_mirabilis_nuclear.CHR.sort.bam 
 	
-	
-3. Index BAM file 
+	# Index BAM file 
 	
 	samtools index -@ 4 -c SAMPLE.welwitschia_mirabilis_nuclear.CHR.sort.bam 
 	
@@ -58,20 +55,20 @@ commands were executed for every chromosome of every sample.
 		
 # Data processing for joint variant calling
 
-1. Get list of gvcf files for every chromosome
+	# 1. Get list of gvcf files for every chromosome
 	
 	ls *.CHR.gvcf > ./240306.GATK.all_samples.welwitschia.CHR_gvcf.list
 		
-2. Run GenomicsDBimport per chromosome
+	# 2. Run GenomicsDBimport per chromosome
 	
 	java -jar /.../gatk-package-4.3.0.0-local.jar GenomicsDBImport 
 			-V 240306.GATK.all_samples.welwitschia.CHR_gvcf.list 
 			--intervals CHR 
 			--genomicsdb-workspace-path 240306.GATK.all_samples.welwitschia.CHR.genomicsDB 
 			
-3. Joint variant calling with GenotypeGVCFs per chromosome
-This section of data processing had to be performed in multiple sections for every chromosome, since the command is very memor-intensive. 
-Files had to be merged again after.
+	# 3. Joint variant calling with GenotypeGVCFs per chromosome
+		This section of data processing had to be performed in multiple sections for every chromosome, since the command is very memor-intensive. 
+		Files had to be merged again after.
 	
 	java -jar /.../gatk-package-4.3.0.0-local.jar GenotypeGVCFs 
 		-R /../Welwitschia_genome.fasta
@@ -81,8 +78,8 @@ Files had to be merged again after.
 		-O 240306.GATK.all_samples.welwitschia.CHR.genotypeGVCFs.conf_0_allsites.vcf 
 		--intervals CHR XX:XX
 		
-4. MergeVCFs
-lists were created manually according to the sections the files were divided in
+	# 4. MergeVCFs
+	lists were created manually according to the sections the files were divided in
 		
 	java -jar /.../picard.jar MergeVcfs 
 		I=CHR_GenotypeGVCFs.list 
